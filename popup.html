@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto-Close Idle Tabs</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+    :root {
+      --bg: #0d0f1a;
+      --surface: rgba(255,255,255,0.05);
+      --surface-hover: rgba(255,255,255,0.09);
+      --border: rgba(255,255,255,0.08);
+      --accent: #6ee7b7;
+      --accent2: #818cf8;
+      --accent-glow: rgba(110,231,183,0.18);
+      --danger: #f87171;
+      --warn: #fbbf24;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 360px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow: hidden;
+    }
+
+    .bg-orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(55px); pointer-events: none; z-index: 0;
+    }
+    .bg-orb-1 {
+      width: 180px; height: 180px;
+      background: radial-gradient(circle, rgba(110,231,183,0.10), transparent 70%);
+      top: -50px; right: -30px;
+    }
+    .bg-orb-2 {
+      width: 140px; height: 140px;
+      background: radial-gradient(circle, rgba(129,140,248,0.08), transparent 70%);
+      bottom: -30px; left: -20px;
+    }
+
+    .container { position: relative; z-index: 1; padding: 18px 16px 14px; }
+
+    /* ── NAV TABS ── */
+    .nav {
+      display: flex; gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 16px;
+    }
+    .nav-btn {
+      flex: 1; padding: 7px 6px;
+      background: transparent; border: none;
+      border-radius: 7px;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .nav-btn.active {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+    }
+    .nav-btn:hover:not(.active) { color: var(--text); }
+
+    /* ── PANELS ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 14px;
+    }
+    .icon-wrap {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+    .icon-wrap svg { width: 18px; height: 18px; }
+    .header-text h1 {
+      font-weight: 600; font-size: 14px;
+      letter-spacing: -0.2px; color: #fff; line-height: 1.2;
+    }
+    .header-text p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── STATUS ── */
+    .status-row {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 11px;
+      margin-bottom: 14px;
+      font-size: 12px; color: var(--muted);
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 5px var(--accent);
+      animation: pulse 2s ease-in-out infinite; flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.75); }
+    }
+    #liveStatus { color: var(--text); font-weight: 500; }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 8px;
+    }
+
+    /* ── PRESET GRID ── */
+    .preset-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 6px; margin-bottom: 12px;
+    }
+    .preset-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 9px; color: var(--text);
+      font-family: 'Space Mono', monospace; font-size: 12px;
+      padding: 8px 4px; cursor: pointer;
+      transition: all 0.15s ease; text-align: center;
+    }
+    .preset-btn:hover {
+      background: var(--surface-hover);
+      border-color: rgba(110,231,183,0.25); color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .preset-btn.active {
+      background: linear-gradient(135deg, rgba(110,231,183,0.13), rgba(129,140,248,0.13));
+      border-color: var(--accent); color: var(--accent); font-weight: 700;
+      box-shadow: 0 0 10px rgba(110,231,183,0.12);
+    }
+
+    /* ── INPUT ROW ── */
+    .input-row { display: flex; gap: 7px; margin-bottom: 13px; }
+    .input-wrap { flex: 1; position: relative; }
+    .input-wrap input {
+      width: 100%; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 9px;
+      color: var(--text); font-family: 'Space Mono', monospace;
+      font-size: 13px; padding: 9px 36px 9px 12px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-wrap input::placeholder { color: var(--muted); }
+    .input-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(110,231,183,0.08);
+    }
+    .input-wrap input::-webkit-outer-spin-button,
+    .input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .input-unit {
+      position: absolute; right: 11px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px; color: var(--muted); pointer-events: none;
+    }
+
+    /* ── SAVE BUTTON ── */
+    #saveBtn {
+      width: 100%; padding: 10px;
+      background: linear-gradient(135deg, var(--accent), #34d399);
+      color: #0d0f1a; border: none; border-radius: 9px;
+      font-family: 'DM Sans', sans-serif; font-weight: 700;
+      font-size: 13px; cursor: pointer;
+      transition: all 0.18s ease; letter-spacing: 0.2px;
+      margin-bottom: 10px;
+    }
+    #saveBtn:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(110,231,183,0.3); }
+    #saveBtn:active { transform: translateY(0); }
+    #saveBtn.saved { background: linear-gradient(135deg, #22c55e, #16a34a); }
+
+    /* ── TOAST ── */
+    .toast {
+      font-size: 11px; color: var(--muted);
+      min-height: 16px; transition: color 0.2s;
+    }
+    .toast.success { color: var(--accent); }
+    .toast.error   { color: var(--danger); }
+
+    /* ── DIVIDER ── */
+    .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+    /* ── TAB LIST ── */
+    .tabs-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 6px;
+    }
+    #tabCount { font-size: 11px; color: var(--muted); }
+
+    #tabList {
+      display: flex; flex-direction: column; gap: 4px;
+      max-height: 200px; overflow-y: auto;
+    }
+    #tabList::-webkit-scrollbar { width: 3px; }
+    #tabList::-webkit-scrollbar-track { background: transparent; }
+    #tabList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .tab-item {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 9px;
+      animation: slideIn 0.18s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(3px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .tab-favicon {
+      width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0;
+    }
+    .tab-title {
+      flex: 1; font-size: 11px; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tab-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; flex-shrink: 0;
+      padding: 2px 5px; border-radius: 4px; font-weight: 700;
+    }
+    .tab-badge.active { background: rgba(110,231,183,0.12); color: var(--accent); }
+    .tab-badge.idle   { background: rgba(248,113,113,0.12); color: var(--danger); }
+    .tab-badge.warn   { background: rgba(251,191,36,0.12);  color: var(--warn); }
+    .tab-badge.safe   { background: rgba(100,116,139,0.12); color: var(--muted); }
+    .tab-badge.snooze { background: rgba(129,140,248,0.12); color: var(--accent2); }
+    .tab-badge.pinned { background: rgba(100,116,139,0.12); color: var(--muted); }
+
+    /* Snooze button inline */
+    .snooze-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 4px; color: var(--muted);
+      font-size: 10px; padding: 1px 5px; cursor: pointer;
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .snooze-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    /* ── HISTORY PANEL ── */
+    .history-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    #clearHistBtn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--muted);
+      font-size: 10px; padding: 3px 8px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    #clearHistBtn:hover { border-color: var(--danger); color: var(--danger); }
+
+    #historyList {
+      display: flex; flex-direction: column; gap: 4px;
+      max-height: 320px; overflow-y: auto;
+    }
+    #historyList::-webkit-scrollbar { width: 3px; }
+    #historyList::-webkit-scrollbar-track { background: transparent; }
+    #historyList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .hist-item {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 9px;
+    }
+    .hist-favicon { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+    .hist-info { flex: 1; min-width: 0; }
+    .hist-title {
+      font-size: 11px; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hist-time { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .restore-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 5px; color: var(--muted);
+      font-size: 10px; padding: 2px 6px; cursor: pointer;
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .restore-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .empty-state {
+      text-align: center; color: var(--muted);
+      font-size: 12px; padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0d0f1a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>Auto-Close Idle Tabs</h1>
+        <p>Per-tab timers &nbsp;·&nbsp; MV3</p>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <div class="nav">
+      <button class="nav-btn active" data-panel="settings">Settings</button>
+      <button class="nav-btn" data-panel="tabs">Open Tabs</button>
+      <button class="nav-btn" data-panel="history">History</button>
+    </div>
+
+    <!-- ── SETTINGS PANEL ── -->
+    <div class="panel active" id="panel-settings">
+
+      <div class="status-row">
+        <span class="dot"></span>
+        <span id="liveStatus">Loading…</span>
+      </div>
+
+      <div class="section-label">Quick presets</div>
+      <div class="preset-grid">
+        <button class="preset-btn" data-time="5">5 min</button>
+        <button class="preset-btn" data-time="10">10 min</button>
+        <button class="preset-btn" data-time="15">15 min</button>
+        <button class="preset-btn" data-time="30">30 min</button>
+        <button class="preset-btn" data-time="45">45 min</button>
+        <button class="preset-btn" data-time="60">60 min</button>
+      </div>
+
+      <div class="section-label">Custom timeout</div>
+      <div class="input-row">
+        <div class="input-wrap">
+          <input type="number" id="idleTime" min="1" max="1440" placeholder="e.g. 20" aria-label="Idle timeout in minutes">
+          <span class="input-unit">min</span>
+        </div>
+      </div>
+
+      <button id="saveBtn" aria-label="Save idle timeout setting">Save Settings</button>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <!-- ── TABS PANEL ── -->
+    <div class="panel" id="panel-tabs">
+      <div class="tabs-header">
+        <div class="section-label" style="margin:0">Open tabs</div>
+        <span id="tabCount"></span>
+      </div>
+      <div id="tabList"></div>
+    </div>
+
+    <!-- ── HISTORY PANEL ── -->
+    <div class="panel" id="panel-history">
+      <div class="history-header">
+        <div class="section-label" style="margin:0">Auto-closed tabs</div>
+        <button id="clearHistBtn">Clear all</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

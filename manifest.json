@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Auto-Close Idle Tabs",
+  "version": "3.0",
+  "description": "Automatically closes tabs that have been idle. Each tab has its own individual countdown timer with snooze and restore history.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Auto-Close Idle Tabs",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "32":  "icons/icon32.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16":  "icons/icon16.png",
+    "32":  "icons/icon32.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none';"
+  }
+}
