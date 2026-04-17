@@ -4,20 +4,28 @@ If you are someone who ends up with 40 open tabs and a slow browser, this extens
 
 ## What makes it different
 
-Most tab closers treat all tabs the same. This one gives every tab its own countdown timer. You can see exactly when a tab is about to close, snooze it if you still need it, and bring it back from history if you close something by mistake.
+Most tab closers treat all tabs the same and apply one global timer. This one gives every tab its own independent countdown timer. You can see exactly when each tab is about to close, snooze individual tabs when you need more time, and bring anything back from the restore history if you change your mind.
 
-## What it does
+## Features
 
-Each tab gets an individual idle timer that starts counting down from the moment you stop interacting with it. When the timer hits zero the tab closes automatically. If you want to keep a tab open a bit longer you can snooze it. Every closed tab is saved to a restore list so you never permanently lose anything.
+Every tab shows a live countdown badge in the popup. When a tab has more than 5 minutes left the badge is green. Under 5 minutes it turns orange as a warning. Under 1 minute it shows the exact seconds counting down and turns red. When a tab is about to be closed the badge reads CLOSING.
+
+Active tabs, pinned tabs, and tabs playing audio are completely protected and will never be automatically closed regardless of how long they have been open.
+
+The snooze button adds 15 minutes to any tab's timer instantly. This is useful when you know you will get back to something but not right now.
+
+The restore history keeps a log of the last 10 auto-closed tabs with their title, URL, favicon, and how long ago they were closed. You can reopen any of them with a single click.
+
+There are preset timer buttons for common intervals (5 minutes, 10 minutes, 30 minutes, 1 hour) and a manual input if you want something specific. Settings sync across your Chrome profile automatically.
 
 ## How to install
 
-Download or clone this repo, open Chrome and go to chrome://extensions, turn on Developer Mode in the top right corner, click Load unpacked, and select this folder. The icon will appear in your toolbar right away.
+Download or clone this repo, open Chrome and go to chrome://extensions, turn on Developer Mode in the top right corner, click Load unpacked, and select this folder.
 
-## Permissions it uses
+## How it works technically
 
-It needs access to your tabs so it can monitor and close them. It uses alarms to run the per-tab timers, and storage to remember your settings and the restore history. Nothing is sent anywhere.
+The background service worker runs a polling alarm every 15 seconds to keep the countdown timers accurate. Tab activity is tracked through Chrome's tab events so the inactive timestamp is always up to date. When a tab's idle time exceeds your configured threshold the extension records it to history and calls chrome.tabs.remove. State is persisted to chrome.storage.local so your history and snooze data survives browser restarts.
 
-## Built with
+## Permissions
 
-Manifest V3 and plain JavaScript using Chrome's tabs, alarms, and storage APIs.
+The extension needs the tabs permission to monitor and close tabs, alarms to run the 15-second polling tick, and storage to save your settings and restore history. No data leaves your machine.
